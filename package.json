@@ -1,6 +1,6 @@
 {
   "name": "dbstore-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A key-value store for MongoDB and PostgreSQL with optional AES-256-GCM encryption",
   "main": "index.js",
   "scripts": {
