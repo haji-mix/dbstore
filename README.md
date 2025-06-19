@@ -33,7 +33,7 @@ npm install dbstore pg pino mongoose
 ### PostgreSQL Example (Unencrypted)
 
 ```javascript
-const { createStore } = require('dbstore');
+const { createStore } = require('dbstore-manager');
 const pino = require('pino');
 
 const logger = pino({ level: 'debug' });
@@ -65,7 +65,7 @@ main();
 ### MongoDB Example (Encrypted)
 
 ```javascript
-const { createStore, generateBytes } = require('dbstore');
+const { createStore, generateBytes } = require('dbstore-manager');
 const pino = require('pino');
 
 const logger = pino({ level: 'debug' });
@@ -101,7 +101,7 @@ main();
 ### Generating a Key
 
 ```javascript
-const { generateBytes } = require('dbstore');
+const { generateBytes } = require('dbstore-manager');
 const pino = require('pino');
 
 const logger = pino({ level: 'debug' });
@@ -116,7 +116,7 @@ console.log(`Generated key: ${key}`); // 64-character hex string
 The `createStore` function creates a store instance for either MongoDB or PostgreSQL.
 
 ```javascript
-const { createStore } = require('dbstore');
+const { createStore } = require('dbstore-manager');
 const store = createStore({
   type: 'postgresql', // or 'mongodb'
   uri: 'postgresql://user:password@localhost:5432/mydb',
@@ -169,7 +169,7 @@ Values are automatically encrypted before storage and decrypted on retrieval. Wi
 Use the `generateBytes` function to create a secure key:
 
 ```javascript
-const { generateBytes } = require('dbstore');
+const { generateBytes } = require('dbstore-manager');
 const key = generateBytes(32, 'hex'); // 64-character hex string
 process.env.ENCRYPTION_KEY = key; // Store in environment
 ```
@@ -283,7 +283,7 @@ Both `MongoStore` and `PostgresStore` implement the following methods:
 - **Encryption**: Use a 32-byte key for AES-256-GCM encryption. Generate keys with `generateBytes(32, 'hex')` for security.
 - **Key Storage**: Store encryption keys in environment variables or a secrets manager, not in code:
   ```bash
-  export ENCRYPTION_KEY=$(node -e "console.log(require('dbstore').generateBytes(32, 'hex'))")
+  export ENCRYPTION_KEY=$(node -e "console.log(require('dbstore-manager').generateBytes(32, 'hex'))")
   ```
 - **Unencrypted Mode**: If no `encryptionKey` is provided, data is stored in plaintext. Ensure this aligns with your security requirements.
 - **SSL**: For PostgreSQL (e.g., Neon), use `sslmode=require` in the URI. Configure `connectionOptions.ssl` if needed:
@@ -317,7 +317,7 @@ Both `MongoStore` and `PostgresStore` implement the following methods:
 ## Example: Using with Neon PostgreSQL
 
 ```javascript
-const { createStore, generateBytes } = require('dbstore');
+const { createStore, generateBytes } = require('dbstore-manager');
 const pino = require('pino');
 
 const logger = pino({ level: 'debug' });
