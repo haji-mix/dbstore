@@ -4,11 +4,11 @@ const pino = require("pino");
 const crypto = require("crypto");
 
 const ALGORITHM = "aes-256-gcm";
-const KEY_LENGTH = 32; 
-const IV_LENGTH = 12; 
+const DERIVED_KEY_LENGTH = 32; // Required for AES-256-GCM
+const IV_LENGTH = 12;
 
 function generateBytes(
-  length = KEY_LENGTH,
+  length = DERIVED_KEY_LENGTH,
   encoding = "hex",
   logger = pino({ level: "info" })
 ) {
@@ -30,16 +30,33 @@ function getEncryptionKey(options, logger) {
   const key = options.encryptionKey || process.env.ENCRYPTION_KEY;
   if (!key) {
     logger.debug("No encryption key provided; storing values unencrypted.");
-    return null; 
+    return null;
   }
-  const keyBuffer = Buffer.from(key);
-  if (keyBuffer.length !== KEY_LENGTH) {
-    throw new Error(
-      `Encryption key must be ${KEY_LENGTH} bytes. Got ${keyBuffer.length} bytes.`
+
+  try {
+    let keyBuffer = Buffer.from(key);
+    if (keyBuffer.length === DERIVED_KEY_LENGTH) {
+      logger.debug("Encryption key is 32 bytes; using directly.");
+      return keyBuffer;
+    }
+
+    logger.debug(
+      `Input key length is ${keyBuffer.length} bytes; deriving 32-byte key with PBKDF2.`
     );
+    const salt = crypto.randomBytes(16);
+    keyBuffer = crypto.pbkdf2Sync(
+      keyBuffer,
+      salt,
+      100000,
+      DERIVED_KEY_LENGTH,
+      "sha256"
+    );
+    logger.debug("Derived 32-byte encryption key successfully.");
+    return keyBuffer;
+  } catch (error) {
+    logger.error("Encryption key processing error:", error.message);
+    throw new Error(`Failed to process encryption key: ${error.message}`);
   }
-  logger.debug("Encryption key provided; values will be encrypted.");
-  return keyBuffer;
 }
 
 function encrypt(value, keyBuffer, logger) {
@@ -58,10 +75,8 @@ function encrypt(value, keyBuffer, logger) {
   }
 }
 
-
 function decrypt(encrypted, keyBuffer, logger) {
   try {
-
     if (
       !encrypted ||
       !encrypted.ciphertext ||
@@ -86,7 +101,6 @@ function decrypt(encrypted, keyBuffer, logger) {
     throw new Error("Failed to decrypt value");
   }
 }
-
 
 class MongoConnectionManager {
   static connections = new Map();
@@ -146,7 +160,6 @@ class MongoConnectionManager {
   }
 }
 
-
 class PostgresConnectionManager {
   static pools = new Map();
   static logger;
@@ -202,7 +215,7 @@ class PostgresConnectionManager {
 class Store {
   constructor(options) {
     this.logger = options.logger || pino({ level: "info" });
-    this.encryptionKey = getEncryptionKey(options, this.logger); 
+    this.encryptionKey = getEncryptionKey(options, this.logger);
   }
 
   async start() {}
@@ -237,7 +250,7 @@ class MongoStore extends Store {
     this.allowClear = options.allowClear || false;
     this.connection = null;
     this.KeyValue = null;
-    this.options = options; 
+    this.options = options;
   }
 
   async start() {
@@ -474,7 +487,7 @@ class PostgresStore extends Store {
     this.ignoreError = options.ignoreError || false;
     this.allowClear = options.allowClear || false;
     this.pool = null;
-    this.options = options; 
+    this.options = options;
   }
 
   async start() {
@@ -728,11 +741,9 @@ class PostgresStore extends Store {
   }
 }
 
-// Factory function
 function createStore(options) {
   const logger = options.logger || pino({ level: "info" });
 
-  // Initialize connection managers with logger
   MongoConnectionManager.initialize(logger);
   PostgresConnectionManager.initialize(logger);
 
@@ -754,5 +765,5 @@ module.exports = {
   createStore,
   MongoConnectionManager,
   PostgresConnectionManager,
-  generateBytes, 
+  generateBytes,
 };
